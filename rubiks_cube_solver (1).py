@@ -26,38 +26,24 @@ class RubiksCubeSolver:
 
         self.cap = None
         self.arduino = None
-        self.cube_state = [''] * 54  # 54 stickers on a Rubik's cube
+        self.cube_state = [''] * 54 
         self.face_colors = []
         self.current_face = 0
         self.face_names = ['Front', 'Right', 'Back', 'Left', 'Up', 'Down']
         
-        # Color ranges in HSV for detection
-        # self.color_ranges = {
-        #     'F': ([0, 0, 200], [180, 30, 255]),      # White
-        #     'L': ([20, 100, 100], [30, 255, 255]),   # Yellow
-        #     'R': ([0, 100, 100], [10, 255, 255]),    # Red
-        #     'U': ([10, 100, 100], [20, 255, 255]),   # Orange
-        #     'D': ([40, 50, 50], [80, 255, 255]),     # Green
-        #     'B': ([90, 50, 50], [130, 255, 255])     # Blue
-        # }
+
         self.color_ranges = {
-            # White: very low saturation, high value
             'F': ([0, 0, 200], [180, 40, 255]),
 
-            # Yellow: narrower hue, higher saturation
             'L': ([22, 120, 120], [32, 255, 255]),
 
-            # Red: MUST be split (HSV hue wraps at 180)
             'R1': ([0, 120, 100], [8, 255, 255]),
             'R2': ([170, 120, 100], [180, 255, 255]),
 
-            # Orange: tighter than red/yellow overlap
             'U': ([10, 130, 120], [20, 255, 255]),
 
-            # Green: narrower hue, avoids yellow bleed
             'D': ([40, 80, 80], [75, 255, 255]),
 
-            # Blue: tightened to avoid cyan
             'B': ([95, 80, 80], [125, 255, 255])
         }
 
@@ -104,44 +90,6 @@ class RubiksCubeSolver:
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
         print("Webcam initialized")
-    
-    # def detect_color(self, hsv_roi):
-    #     """
-    #     Detect the color of a sticker from HSV region of interest
-        
-    #     Args:
-    #         hsv_roi: HSV image of the sticker region
-        
-    #     Returns:
-    #         Color character (W, Y, R, O, G, B)
-    #     """
-    #     color_counts = {}
-        
-    #     color_counts = {}
-
-    #     kernel = np.ones((3, 3), np.uint8)
-
-    #     for color, (lower, upper) in self.color_ranges.items():
-    #         mask = cv2.inRange(hsv_roi,
-    #                         np.array(lower, dtype=np.uint8),
-    #                         np.array(upper, dtype=np.uint8))
-
-    #         # clean noise
-    #         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    #         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-
-    #         count = cv2.countNonZero(mask)
-
-    #         # merge red ranges
-    #         if color.startswith('R'):
-    #             color_counts['R'] = color_counts.get('R', 0) + count
-    #         else:
-    #             color_counts[color] = count
-
-    #     # Return color with highest pixel count
-    #     if max(color_counts.values()) > 0:
-    #         return max(color_counts, key=color_counts.get)
-    #     return 'F'  # Default to white if no color detected
 
     def draw_status_overlay(self, frame):
         if not self.solution_text and not self.error_text:
@@ -553,10 +501,8 @@ class RubiksCubeSolver:
     def run(self):
         """Main execution loop"""
         try:
-            # Initialize webcam
             self.init_webcam(4)
             solved = False
-            # Scan all faces
             while True:
                 if not solved:
                      cube_string = self.scan_all_faces()
