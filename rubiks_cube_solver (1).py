@@ -144,21 +144,53 @@ class RubiksCubeSolver:
     #     return 'F'  # Default to white if no color detected
 
     def draw_status_overlay(self, frame):
-        y = frame.shape[0] - 100
+        if not self.solution_text and not self.error_text:
+            return frame
+
+        h, w = frame.shape[:2]
+
+        Y_OFFSET = 50   # ← move overlay down by 150 pixels
+        BAR_HEIGHT = 60
+
+        cv2.rectangle(
+            frame,
+            (0, Y_OFFSET),
+            (w, Y_OFFSET + BAR_HEIGHT),
+            (0, 0, 0),
+            -1
+        )
+        if self.solution_text == '':
+                cv2.putText(
+                    frame,
+                    f"Solution: {"Already Solved!"}",
+                    (10, Y_OFFSET + 40),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (0, 255, 255),
+                    2
+                )
 
         if self.solution_text:
-            cv2.rectangle(frame, (10, y - 30), (frame.shape[1] - 10, y + 40), (0, 0, 0), -1)
-            cv2.putText(frame, "Solution:", (20, y),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-            cv2.putText(frame, self.solution_text, (20, y + 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            cv2.putText(
+                frame,
+                f"Solution: {self.solution_text}",
+                (10, Y_OFFSET + 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 255),
+                2
+            )
 
         elif self.error_text:
-            cv2.rectangle(frame, (10, y - 30), (frame.shape[1] - 10, y + 40), (0, 0, 0), -1)
-            cv2.putText(frame, "Solver Error:", (20, y),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            cv2.putText(frame, self.error_text[:80], (20, y + 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            cv2.putText(
+                frame,
+                f"Solver Error: {self.error_text}",
+                (10, Y_OFFSET + 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 0, 255),
+                2
+            )
 
         return frame
 
@@ -192,11 +224,11 @@ class RubiksCubeSolver:
         net_width = 4 * (3 * 34 + 10)   # exact net width
         net_height = 3 * (3 * 34 + 10)
 
-        start_x = max(10, frame.shape[1] - net_width - 10)
-        start_y = max(80, (frame.shape[0] - net_height) // 2)
+        start_x = 50
+        start_y = max(150, (frame.shape[0] - net_height) + 150)
 
-        size = 30
-        gap = 4
+        size = 15
+        gap = 2
 
         for face_idx, face in enumerate(self.face_colors):
             if face_idx not in net_positions:
@@ -308,8 +340,8 @@ class RubiksCubeSolver:
         """
         # Center the grid
         grid_size = 550
-        sticker_size = 180
-        gap = 20
+        sticker_size = 120
+        gap = 70
         
         start_x = (frame_width - grid_size) // 2
         start_y = (frame_height - grid_size) // 2
@@ -425,8 +457,13 @@ class RubiksCubeSolver:
 
         cube_kociemba = self.colors_to_kociemba_faces(cube_string, all_face_colors)
 
+        if cube_kociemba is None:
+            print("Invalid cube detected")
+            return None
+
         print(f"Kociemba state: {cube_kociemba}")
         return cube_kociemba
+
 
     
     def solve_cube(self, cube_string):
@@ -443,12 +480,15 @@ class RubiksCubeSolver:
             print("\n" + "="*50)
             print("SOLVING CUBE")
             print("="*50)
+            if(cube_string != "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"):
+                solution = sv.solve(cube_string)
+                print(f"\nSolution found: {solution}")
+                print(f"Number of moves: {len(solution.split())}")
+                return solution
+            else:
+                print("Already solved!")
+                return ""
             
-            solution = sv.solve(cube_string)
-            print(f"\nSolution found: {solution}")
-            print(f"Number of moves: {len(solution.split())}")
-            
-            return solution
         except Exception as e:
             self.error_text = str(e)
             print(f"Error solving cube: {e}")
@@ -469,7 +509,15 @@ class RubiksCubeSolver:
             all_face_colors[2][4]: 'B',  # Back
         }
 
-        return ''.join(center_map[c] for c in cube_colors)
+        kociemba = []
+
+        for c in cube_colors:
+            if c not in center_map:
+                self.error_text = f"Invalid cube: unknown color '{c}'"
+                return None
+            kociemba.append(center_map[c])
+
+        return ''.join(kociemba)
 
     def send_to_arduino(self, solution):
         """
@@ -501,80 +549,40 @@ class RubiksCubeSolver:
         
         print("\nSolution sent to Arduino!")
     
-    def display_solution(self, solution):
-        """
-        Display the solution on screen with scanned face images
-        
-        Args:
-            solution: Solution string
-        """
-        # Create a display window
-        display_height = 800
-        display_width = 1200
-        display = np.zeros((display_height, display_width, 3), dtype=np.uint8)
-        
-        # Title
-        cv2.putText(display, "RUBIK'S CUBE SOLUTION", (350, 50),
-                   cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
-        
-        # Display scanned faces (simplified representation)
-        y_offset = 100
-        cv2.putText(display, "Scanned Faces:", (50, y_offset),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-        
-        y_offset += 40
-        for idx, face_name in enumerate(self.face_names):
-            if idx < len(self.face_colors):
-                face_str = ' '.join(self.face_colors[idx])
-                cv2.putText(display, f"{face_name}: {face_str}", (50, y_offset),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
-                y_offset += 30
-        
-        # Display solution
-        y_offset += 30
-        cv2.putText(display, "Solution Moves:", (50, y_offset),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
-        
-        y_offset += 40
-        moves = solution.split()
-        
-        # Display moves in rows
-        moves_per_row = 10
-        for i in range(0, len(moves), moves_per_row):
-            row_moves = ' '.join(moves[i:i+moves_per_row])
-            cv2.putText(display, row_moves, (50, y_offset),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1)
-            y_offset += 35
-        
-        # Statistics
-        y_offset += 30
-        cv2.putText(display, f"Total Moves: {len(moves)}", (50, y_offset),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 200, 255), 2)
-        
-        # Instructions
-        cv2.putText(display, "Press any key to close", (400, display_height - 30),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (150, 150, 150), 1)
-        
-        cv2.imshow("Solution Display", display)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-    
+
     def run(self):
         """Main execution loop"""
         try:
             # Initialize webcam
             self.init_webcam(4)
-            
+            solved = False
             # Scan all faces
-            cube_string = self.scan_all_faces()
-            if cube_string is None:
-                return
-            
+            while True:
+                if not solved:
+                     cube_string = self.scan_all_faces()
+                if cube_string is None:
+                    continue
+                try:
+                    solution = self.solve_cube(cube_string)
+                    if solution:
+                        self.solution_text = solution
+                    solved = True
+                except:
+                    self.solution_text = "Not solved"
+                ret, frame = self.cap.read()
+                if not ret:
+                    break
+                frame = self.draw_cube_net(frame)
+                frame = self.draw_status_overlay(frame)
+                cv2.imshow("Rubik's Cube Scanner", frame)
+
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q'):
+                    break
             # Solve the cube
             solution = self.solve_cube(cube_string)
             if solution:
                 self.solution_text = solution
-            time.sleep(50)
             # Display solution
             # self.display_solution(solution)
             
