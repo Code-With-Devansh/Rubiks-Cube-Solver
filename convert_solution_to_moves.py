@@ -10,6 +10,10 @@
 # 3 -> rotate ccw 180 (blocked)
 # 4 -> rotate cw 180 (blocked)
 
+# state = 0 means servo cannot perform a clockwise movement
+# state = 1 means servo can perform either of the movements
+# state = 2 means servo cannot perform counter clockwise movement
+
 moves = [{"R": ["z1x"],"R'": ["yixrxi2x"],"R2":["z3x"],
           "L":["x1z"],"L'":["xi2xixi"],"L2":["x3z"],
           "U":["y1y"],"U'":["yi2yi"],"U2":["y3y"],
