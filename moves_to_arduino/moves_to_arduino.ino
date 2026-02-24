@@ -85,8 +85,6 @@ for(i = 0;i<com.length();i++){
         angle-=88;
         rot.write(angle);
         delay(500);
-        
-      
       break;
 
 
