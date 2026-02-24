@@ -52,7 +52,7 @@ nextState =[{"R": [1],"R'": [0],"R2":[2],
           "F":[2],"F'":[1],"F2":[1],
           "B":[2],"B'":[1],"B2":[1,2]}]
 
-str = "U2 D2 R2 L2 F2 B2"
+str = "R"
 sol = str.split()
 
 def cancle(str):
@@ -127,19 +127,19 @@ def cancle(str):
     return stack
 
 def value(stack):
-    value = 0
+    val = 0
     for i in stack:
         if(i == "r" or i == "i"):
-            value = value + 1
+            val = val + 1
         if(i == "p" or i == "q"):
-            value = value + 1.5
+            val = val + 1.5
         if(i == "x"):
-            value = value + 2
+            val = val + 2
         if(i == "y"):
-            value = value + 3.5
+            val = val + 3.5
         if(i == "z"):
-            value = value + 4.5
-    return value
+            val = val + 4.5
+    return val
 
 def reduce(i,str,state):
     if(i == len(sol)):
