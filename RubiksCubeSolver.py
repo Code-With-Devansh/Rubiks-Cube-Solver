@@ -129,12 +129,12 @@ class RubiksCubeSolver:
 
         # positions in net (relative)
         net_positions = {
-            4: (1, 0),  # Up
+            5: (1, 0),  # Up
             3: (0, 1),  # Left
             0: (1, 1),  # Front
             1: (2, 1),  # Right
             2: (3, 1),  # Back
-            5: (1, 2),  # Down
+            4: (1, 2),  # Down
         }
 
         net_width = 4 * (3 * 34 + 10)   # exact net width
@@ -288,12 +288,12 @@ class RubiksCubeSolver:
         R = raw[9:18]
         B = raw[18:27]
         L = raw[27:36]
-        D = raw[36:45]
-        U = raw[45:54]
+        U = raw[36:45]
+        D = raw[45:54]
 
         # Reassemble into URFDLB
         kociemba_string = U + R + F + D + L + B
-
+        print("kociemba string: ", kociemba_string)
         return kociemba_string
 
     def color_to_face_mapping(self, raw):
@@ -311,11 +311,12 @@ class RubiksCubeSolver:
             raw[13]: 'R',
             raw[22]: 'B',
             raw[31]: 'L',
-            raw[40]: 'D',
-            raw[49]: 'U',
+            raw[40]: 'U',
+            raw[49]: 'D',
         }
 
         converted = ''.join(centers[c] for c in raw)
+        print("color to face mapping: ", converted)
         return converted
     
     def scan_face(self, expected_done=1, display_window="Rubik's Cube Scanner"):
@@ -332,7 +333,7 @@ class RubiksCubeSolver:
 
         self.arduino.arduino.reset_input_buffer()
         done_count = 0
-        for _ in range(60):
+        for _ in range(180):
             self.cap.read()
         face_colors = []
         start_time = time.time()

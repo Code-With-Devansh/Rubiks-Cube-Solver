@@ -116,19 +116,13 @@ class ArduinoCommunication:
     # ----------------------------------
 
     def send_single_move(self, move):
-        # if self.arduino:
-        #     self.arduino.write(f"{move}\n".encode())
-        if(len(move) == 1):
-            self.arduino.write(f"{move[0]}\n".encode())
-        else:
-            self.arduino.write(f"{move[0]}\n".encode())
+        for cmd in move:
+            self.arduino.write(f"{cmd}\n".encode())
             while True:
                 if self.arduino.in_waiting:
                     response = self.arduino.readline().decode().strip()
                     if response == "DONE":
                         break
-            self.arduino.write(f"{move[1]}\n".encode())
-                
             
 
     def is_connected(self):

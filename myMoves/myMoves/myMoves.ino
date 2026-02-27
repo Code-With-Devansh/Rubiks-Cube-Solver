@@ -26,7 +26,7 @@ void hitman(){
   delay(dd);
   hit.write(90);
   delay(475);
-  if(correction++ ==3){
+  if(correction++ ==2){
     hit.write(96);
     delay(4000);
     hit.write(80);
