@@ -10,10 +10,10 @@ import serial
 import serial.tools.list_ports
 import time
 import kociemba as sv
-
+from ArduinoCommunication import ArduinoCommunication
 
 class RubiksCubeSolver:
-    def __init__(self, arduino_port=None, baudrate=9600):
+    def __init__(self, webcam, arduino_port=None, baudrate=9600):
         """
         Initialize the Rubik's Cube Solver
         
@@ -21,63 +21,31 @@ class RubiksCubeSolver:
             arduino_port: Serial port for Arduino (auto-detect if None)
             baudrate: Serial communication speed
         """
+        self.camidx = webcam
         self.solution_text = None
         self.error_text = None  
 
         self.cap = None
-        self.arduino = None
         self.cube_state = [''] * 54 
         self.face_colors = []
         self.current_face = 0
+        self.arduino = ArduinoCommunication(baudrate)
         self.face_names = ['Front', 'Right', 'Back', 'Left', 'Up', 'Down']
-        
-
         self.color_ranges = {
-            'F': ([0, 0, 200], [180, 40, 255]),
+            'W': ([0, 0, 200], [180, 40, 255]),
 
-            'L': ([22, 120, 120], [32, 255, 255]),
+            'Y': ([22, 120, 120], [32, 255, 255]),
 
             'R1': ([0, 120, 100], [8, 255, 255]),
             'R2': ([170, 120, 100], [180, 255, 255]),
 
-            'U': ([10, 130, 120], [20, 255, 255]),
+            'O': ([10, 130, 120], [20, 255, 255]),
 
-            'D': ([40, 80, 80], [75, 255, 255]),
+            'G': ([40, 80, 80], [75, 255, 255]),
 
             'B': ([95, 80, 80], [125, 255, 255])
         }
-
-        # Initialize Arduino connection
-        if arduino_port:
-            self.connect_arduino(arduino_port, baudrate)
-        else:
-            self.auto_connect_arduino(baudrate)
     
-    def auto_connect_arduino(self, baudrate=9600):
-        """Automatically detect and connect to Arduino"""
-        ports = serial.tools.list_ports.comports()
-        for port in ports:
-            if 'Arduino' in port.description or 'USB' in port.description:
-                try:
-                    self.arduino = serial.Serial(port.device, baudrate, timeout=1)
-                    time.sleep(2)  # Wait for Arduino to reset
-                    print(f"Connected to Arduino on {port.device}")
-                    return True
-                except:
-                    continue
-        print("Warning: Arduino not found. Running in simulation mode.")
-        return False
-    
-    def connect_arduino(self, port, baudrate=9900):
-        """Connect to Arduino on specified port"""
-        try:
-            self.arduino = serial.Serial(port, baudrate, timeout=1)
-            time.sleep(2)
-            print(f"Connected to Arduino on {port}")
-            return True
-        except Exception as e:
-            print(f"Failed to connect to Arduino: {e}")
-            return False
     
     def init_webcam(self, camera_index=0):
         """Initialize webcam"""
@@ -110,7 +78,7 @@ class RubiksCubeSolver:
         if self.solution_text == '':
                 cv2.putText(
                     frame,
-                    f"Solution: {"Already Solved!"}",
+                    f"Solution: Already Solved!",
                     (10, Y_OFFSET + 40),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
@@ -151,11 +119,11 @@ class RubiksCubeSolver:
 
         # color to BGR (for drawing only)
         COLOR_MAP = {
-            'L': (0, 255, 255),   # yellow
-            'U': (0, 165, 255),   # orange
-            'F': (255, 255, 255), # white
+            'Y': (0, 255, 255),   # yellow
+            'O': (0, 165, 255),   # orange
+            'W': (255, 255, 255), # white
             'B': (255, 0, 0),     # blue
-            'D': (0, 255, 0),     # green
+            'G': (0, 255, 0),     # green
             'R': (0, 0, 255),     # red
         }
 
@@ -303,63 +271,118 @@ class RubiksCubeSolver:
         
         return stickers
     
-    def scan_face(self, display_window="Rubik's Cube Scanner"):
+    def raw_to_kociemba(self, raw):
         """
-        Scan one face of the cube
-        
-        Returns:
-            List of 9 color characters for the face
+        Convert cube string from FRBLDU order
+        to Kociemba URFDLB order.
+
+        raw: 54-character string
+        returns: 54-character string in URFDLB order
         """
+
+        if len(raw) != 54:
+            raise ValueError("Cube string must be 54 characters")
+
+        # Slice faces from FRBLDU
+        F = raw[0:9]
+        R = raw[9:18]
+        B = raw[18:27]
+        L = raw[27:36]
+        D = raw[36:45]
+        U = raw[45:54]
+
+        # Reassemble into URFDLB
+        kociemba_string = U + R + F + D + L + B
+
+        return kociemba_string
+
+    def color_to_face_mapping(self, raw):
+        """
+        Convert color-based string to URFDLB letters
+        using center stickers as reference.
+        """
+
+        if len(raw) != 54:
+            raise ValueError("Cube string must be 54 characters")
+
+        # Extract centers (index 4 of each face block in FRBLDU order)
+        centers = {
+            raw[4]: 'F',
+            raw[13]: 'R',
+            raw[22]: 'B',
+            raw[31]: 'L',
+            raw[40]: 'D',
+            raw[49]: 'U',
+        }
+
+        converted = ''.join(centers[c] for c in raw)
+        return converted
+    
+    def scan_face(self, expected_done=1, display_window="Rubik's Cube Scanner"):
+        """
+        Scan one face of the cube.
+        Capture occurs automatically after Arduino sends DONE.
+        """
+        done_count = 0
         if self.cap is None:
             self.init_webcam(1)
-        
+
+        if self.arduino is None:
+            print("Error: Arduino not connected.")
+            return None
+
         face_colors = []
-        scanning = True
-        
-        while scanning:
+        start_time = time.time()
+        timeout = 10  # seconds
+
+        while True:
             ret, frame = self.cap.read()
             if not ret:
                 break
-            
-            height, width = frame.shape[:2]
-            
-            # Get sticker positions
-            stickers = self.get_sticker_positions(width, height)
-            
-            # Convert to HSV for color detection
-            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            
-            # Detect colors if space is pressed
-            if len(face_colors) == 0:
-                temp_colors = []
-                for (x, y, w, h) in stickers:
-                    roi = hsv[y:y+h, x:x+w]
-                    color = self.detect_color(roi)
-                    temp_colors.append(color)
-            
-            # Draw grid
-            display_frame = self.draw_sticker_grid(frame.copy(), stickers,
-                                       face_colors if face_colors else temp_colors)
 
+            height, width = frame.shape[:2]
+            stickers = self.get_sticker_positions(width, height)
+
+            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+            # Continuously compute temp colors for preview
+            temp_colors = []
+            for (x, y, w, h) in stickers:
+                roi = hsv[y:y+h, x:x+w]
+                color = self.detect_color(roi)
+                temp_colors.append(color)
+
+            display_frame = self.draw_sticker_grid(frame.copy(), stickers, temp_colors)
             display_frame = self.draw_cube_net(display_frame)
             display_frame = self.draw_status_overlay(display_frame)
-            # Add instructions
+
             face_name = self.face_names[self.current_face] if self.current_face < 6 else "Done"
-            cv2.putText(display_frame, f"Scanning: {face_name} Face ({self.current_face + 1}/6)",
-                       (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-            cv2.putText(display_frame, "Press SPACE to capture, Q to quit",
-                       (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
-            
+
+            cv2.putText(display_frame,
+                        f"Waiting for Arduino... ({face_name} Face {self.current_face + 1}/6)",
+                        (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        (0, 255, 255),
+                        2)
+
             cv2.imshow(display_window, display_frame)
+            cv2.waitKey(1)
+
+            # 🔹 Check Arduino signal
+            if self.arduino.arduino.in_waiting:
+                response = self.arduino.arduino.readline().decode().strip()
+                if response == "DONE":
+                    done_count += 1
+                    if done_count == expected_done:
+                        face_colors = temp_colors.copy()
+                        return face_colors
             
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord(' '):  # Space to capture
-                face_colors = temp_colors.copy()
-                print(f"{face_name} face captured: {face_colors}")
-                scanning = False
-            elif key == ord('q'):  # Q to quit
+            # 🔹 Timeout protection
+            if time.time() - start_time > timeout:
+                print("Timeout waiting for Arduino")
                 return None
-        
+
         return face_colors
     
     def scan_all_faces(self):
@@ -379,38 +402,43 @@ class RubiksCubeSolver:
         print("4. Press Q at any time to quit\n")
         
         all_face_colors = []
-        
+        if not self.arduino:
+            self.arduino = ArduinoCommunication()
+        move = [
+            ['d'],
+            ['x'],
+            ['x'],
+            ['x'],
+            ['i', 'x'],
+            ['y', 'p']
+        ]
+
         for face_idx in range(6):
             self.current_face = face_idx
             print(f"\nPosition {self.face_names[face_idx]} face toward camera...")
-            
-            face_colors = self.scan_face()
+
+            # Send each command non-blocking
+            for cmd in move[face_idx]:
+                self.arduino.send_single_move(cmd)
+
+            # Now wait + capture inside scan_face()
+            face_colors = self.scan_face(expected_done=len(move[face_idx]))
+
             if face_colors is None:
                 print("Scanning cancelled")
                 return None
-            
+
             all_face_colors.append(face_colors)
-            
-            # Store scanned image
             self.face_colors = all_face_colors.copy()
-        
-        # Convert to Kociemba format (URFDLB order)
-        # Assuming scan order is FRBLUD, reorder to URFDLB
-        kociemba_order = [4, 1, 0, 5, 3, 2]  # U, R, F, D, L, B
         cube_string = ''
-        for face_idx in kociemba_order:
+        for face_idx in range(6):
             cube_string += ''.join(all_face_colors[face_idx])
         
         print(f"\nCube colors: {cube_string}")
-
-        cube_kociemba = self.colors_to_kociemba_faces(cube_string, all_face_colors)
-
-        if cube_kociemba is None:
-            print("Invalid cube detected")
-            return None
-
-        print(f"Kociemba state: {cube_kociemba}")
-        return cube_kociemba
+        mapped = self.color_to_face_mapping(cube_string)
+        kociemba_ready = self.raw_to_kociemba(mapped)
+        return kociemba_ready
+    
 
 
     
@@ -442,66 +470,10 @@ class RubiksCubeSolver:
             print(f"Error solving cube: {e}")
             return None
 
-    def colors_to_kociemba_faces(self, cube_colors, all_face_colors):
-        """
-        Convert color-based cube string to Kociemba face-based string
-        """
-
-        # centers from scan order: Front, Right, Back, Left, Up, Down
-        center_map = {
-            all_face_colors[4][4]: 'U',  # Up
-            all_face_colors[1][4]: 'R',  # Right
-            all_face_colors[0][4]: 'F',  # Front
-            all_face_colors[5][4]: 'D',  # Down
-            all_face_colors[3][4]: 'L',  # Left
-            all_face_colors[2][4]: 'B',  # Back
-        }
-
-        kociemba = []
-
-        for c in cube_colors:
-            if c not in center_map:
-                self.error_text = f"Invalid cube: unknown color '{c}'"
-                return None
-            kociemba.append(center_map[c])
-
-        return ''.join(kociemba)
-
-    def send_to_arduino(self, solution):
-        """
-        Send solution moves to Arduino
-        
-        Args:
-            solution: Space-separated string of moves
-        """
-        if self.arduino is None:
-            print("\nSimulation mode - moves would be:")
-            for move in solution.split():
-                print(f"  -> {move}")
-            return
-        
-        print("\n" + "="*50)
-        print("SENDING TO ARDUINO")
-        print("="*50)
-        
-        moves = solution.split()
-        for idx, move in enumerate(moves, 1):
-            print(f"Move {idx}/{len(moves)}: {move}")
-            self.arduino.write(f"{move}\n".encode())
-            time.sleep(0.5)  # Wait for move to complete
-            
-            # Read response from Arduino
-            if self.arduino.in_waiting:
-                response = self.arduino.readline().decode().strip()
-                print(f"Arduino: {response}")
-        
-        print("\nSolution sent to Arduino!")
-    
-
     def run(self):
         """Main execution loop"""
         try:
-            self.init_webcam(4)
+            self.init_webcam(self.camidx)
             solved = False
             while True:
                 if not solved:
@@ -525,17 +497,11 @@ class RubiksCubeSolver:
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('q'):
                     break
-            # Solve the cube
+                
             solution = self.solve_cube(cube_string)
             if solution:
                 self.solution_text = solution
-            # Display solution
-            # self.display_solution(solution)
-            
-            # # Send to Arduino
-            # response = input("\nSend solution to Arduino? (y/n): ")
-            # if response.lower() == 'L':
-            #     self.send_to_arduino(solution)
+            return solution
             
         except KeyboardInterrupt:
             print("\n\nProgram interrupted by user")
@@ -548,8 +514,8 @@ class RubiksCubeSolver:
         """Clean up resources"""
         if self.cap is not None:
             self.cap.release()
-        if self.arduino is not None:
-            self.arduino.close()
+        if self.arduino:
+            self.arduino.arduino.close()
         cv2.destroyAllWindows()
         print("\nCleanup complete")
 

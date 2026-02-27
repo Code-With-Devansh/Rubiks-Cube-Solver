@@ -1,77 +1,67 @@
 #include <Servo.h>
 
-Servo servo1;
-Servo servo2;
+Servo blocker;
+Servo rotor;
 Servo hit;
 int angle = 90;
-const int servo1Pin = 9;
-const int servo2Pin = 10;
+const int blockerPin = 9;
+const int rotorPin = 10;
 const int hitpin = 11;
 int correction = 0;
+
 void BUB(int angle){
-  servo1.write(30);
+  blocker.write(30);
   delay(500);
-  servo2.write(angle);
+  rotor.write(angle);
   delay(500);
-  servo1.write(90);
+  blocker.write(90);
   delay(500);
 }
+
 void hitman(){
-  int speed = 50;
-  int dd = 1310;
-  // if(angle == 98) {speed = 45; dd =1170;}
-  //     delay(100);
-  //     hit.write(speed);
-  //     delay(dd);
-  //     hit.write(85);
-  //     delay(500);
-      // if(correction++ == 10){
-      //   hit.write(95);
-      //  delay(4500);
-      //  hit.write(85);
-      //  correction = 0;
-      //  hit.write(0);
-  delay(250);
-  hit.write(85);
-  delay(500);
+  int speed = 0;
+  int dd = 700;
+  delay(100);
+  hit.write(speed);
+  delay(dd);
   hit.write(90);
-      
+  delay(475);
+  if(correction++ ==3){
+    hit.write(96);
+    delay(4000);
+    hit.write(80);
+    delay(450);
+    hit.write(90);
+    correction = 0;
+  }   
 }
+
 void setup() {
   Serial.begin(9600);
 
-  servo1.attach(servo1Pin);
-  servo2.attach(servo2Pin);
+  blocker.attach(blockerPin);
+  rotor.attach(rotorPin);
   hit.attach(hitpin);
-  servo1.write(90);  
-  servo2.write(90);   
+  blocker.write(90);  
+  rotor.write(90);   
+  hit.write(96);
+  delay(4000);
+  hit.write(70);
+  delay(450);
   hit.write(90);
 }
-// # x -> hit once
-// # y -> hit twice
-// # z -> hit thrice
-// # r -> rotate cw 90
-// # i -> rotate ccw 90
-// # p -> rotate cw 180
-// # q -> rotate ccw 180
-// # 1 -> rotate ccw 90 (blocked)
-// # 2 -> rotate cw 90 (blocked)
-// # 3 -> rotate ccw 180 (blocked)
-// # 4 -> rotate cw 180 (blocked)
+
 
 void executeR(){
   angle-=90;
-  servo2.write(angle);
+  rotor.write(angle);
   delay(500);
 }
 
-void executeY(){
-
-}
 
 void executeI(){
   angle+=90;
-  servo2.write(angle);
+  rotor.write(angle);
   delay(500);
 }
 
@@ -89,13 +79,13 @@ void loop() {
 
       case 'p':
         angle-=180;
-        servo2.write(angle);
+        rotor.write(angle);
         delay(500);
         break;
       
       case 'q':
         angle+=180;
-        servo2.write(angle);
+        rotor.write(angle);
         delay(500);
         break;
       case '1':
@@ -103,19 +93,17 @@ void loop() {
         angle+=90;
         BUB(angle);
         angle-=108;
-        servo2.write(angle);
+        rotor.write(angle);
         delay(500);
         angle+=35;
         BUB(angle);
         angle-=17;
-        // servo2.write(angle);
-        // delay(500);
         executeI();
       }else{
         angle+=108;
         BUB(angle);
         angle-=18;
-        servo2.write(angle);
+        rotor.write(angle);
       }
         break;
       case '2':
@@ -123,7 +111,7 @@ void loop() {
         angle-=90;
         BUB(angle);
         angle+=108;
-        servo2.write(angle);
+        rotor.write(angle);
         delay(500);
         angle-=30;
         BUB(angle);
@@ -133,7 +121,7 @@ void loop() {
         angle -=108;
         BUB(angle);
         angle+=18;
-        servo2.write(angle);
+        rotor.write(angle);
         delay(500);
       }
         break;
@@ -142,7 +130,7 @@ void loop() {
         angle-=180;
         BUB(angle);
         angle+=108;
-        servo2.write(angle);
+        rotor.write(angle);
         delay(500);
         angle-=37;
         BUB(angle);
@@ -154,14 +142,25 @@ void loop() {
         angle+=180;
         BUB(angle);
         angle-=108;
-        servo2.write(angle);
+        rotor.write(angle);
         delay(500);
         angle+=37;
         BUB(angle);
         angle-=17;
         executeI();
         break;
-
+      case 'x':
+        hitman();
+        break;
+      case 'y':
+        hitman();
+        hitman();
+        break;
+      case 'z':
+        hitman();
+        hitman();
+        hitman();
+        break;
       case 'a':
         BUB(angle);
         break;
@@ -169,7 +168,7 @@ void loop() {
         delay(1000);
         break;
       case 't':
-        servo2.write(0);
+        rotor.write(0);
         delay(500);
         break;
       case 's':
@@ -182,49 +181,6 @@ void loop() {
         hit.write(96);
         break;
     }
-
-  //   // ----- Servo 1 Control -----
-  //   if (command == '1') {
-  //     servo1.write(90);   // Move to 90°
-  //   }
-  //   else if (command == '2') {
-  //     servo1.write(30);   // Back to 30°
-  //   }
-
-  //   // ----- Servo 2 Control -----
-  //   else if (command == '3') {
-      // servo1.write(30);
-      // delay(500);
-      // servo2.write(180); 
-      // delay(500);
-      // servo1.write(90);
-      // delay(500);
-      // servo2.write(70);
-      // delay(500);
-      // servo1.write(30);
-      // delay(500);
-      // servo2.write(127);
-      // delay(500);
-      // servo1.write(90);
-      // delay(500);
-      // servo2.write(108);
-  //   }
-  //   else if (command == 'l' || command == 'L') {
-  //     servo2.write(180);  // Move to 180°
-  //     delay(500);
-  //     // servo2.write(70);
-  //     // delay(500);
-  //     // servo2.write(127);
-  //     // delay(500);
-  //     // servo2.write(108);
-  //   }
-  //   else if (command == 'j' || command == 'J') {
-  //     servo2.write(0);    // Move to 0°
-  //   }
-  //   else if (command == 'r' || command == 'r') {
-  //     servo2.write(127);   // Move to 90°
-  //     delay(500);
-  //     servo2.write(108);
-  //   }
+    Serial.println("DONE");
   }
 }

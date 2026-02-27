@@ -56,119 +56,106 @@ nextState =[{"R": [1],"R'": [0],"R2":[2],
           "F":[2],"F'":[1],"F2":[1],
           "B":[2],"B'":[1],"B2":[1,2]}]
 
-str = "R"
-sol = str.split()
+# str = "L D2 R F B L' F2 R D L F B2 L2 F2 U' L2 D2 L2 U F2 U'"
+def convert_solution_to_moves(str):
+    sol = str.split()
+    def cancle(str):
+        stack = []
+        stack.append("0")
+        for i in str:
+            top = stack.pop()
+            if(i == "x"):
+                if(top == "x"):
+                    stack.append("y")
+                    continue
+                if(top == "y"):
+                    stack.append("z")
+                    continue
+                if(top == "z"):
+                    continue
+            if (i == "y"):
+                if (top == "x"):
+                    stack.append("z")
+                    continue
+                if (top == "y"):
+                    continue
+                if (top == "z"):
+                    stack.append("x")
+                    continue
+            if (i == "z"):
+                if (top == "x"):
+                    continue
+                if (top == "y"):
+                    stack.append("x")
+                    continue
+                if (top == "z"):
+                    stack.append("y")
+                    continue
+            if (i == "r"):
+                if (top == "r"):
+                    stack.append("p")
+                    continue
+                if (top == "i"):
+                    continue
+                if (top == "q"):
+                    stack.append("i")
+                    continue
+            if (i == "i"):
+                if (top == "r"):
+                    continue
+                if (top == "i"):
+                    stack.append("q")
+                    continue
+                if (top == "p"):
+                    stack.append("r")
+                    continue
+            if (i == "p"):
+                if (top == "i"):
+                    stack.append("r")
+                    continue
+                if (top == "q" or top == "p"):
+                    continue
+            if (i == "q"):
+                if (top == "r"):
+                    stack.append("i")
+                    continue
+                if (top == "q" or top == "p"):
+                    continue
+            stack.append(top)
+            stack.append(i)
+        return stack
 
-def cancle(str):
-    stack = []
-    stack.append("0")
-    rot = 0
-    for i in str:
-        top = stack.pop()
-        if(i == "x"):
-            if(top == "x"):
-                stack.append("y")
-                continue
-            if(top == "y"):
-                stack.append("z")
-                continue
-            if(top == "z"):
-                continue
-        if (i == "y"):
-            if (top == "x"):
-                stack.append("z")
-                continue
-            if (top == "y"):
-                continue
-            if (top == "z"):
-                stack.append("x")
-                continue
-        if (i == "z"):
-            if (top == "x"):
-                continue
-            if (top == "y"):
-                stack.append("x")
-                continue
-            if (top == "z"):
-                stack.append("y")
-                continue
-        if (i == "r"):
-            if (top == "r"):
-                stack.append("p")
-                continue
-            if (top == "i"):
-                continue
-            if (top == "q"):
-                stack.append("i")
-                continue
-        if (i == "i"):
-            if (top == "r"):
-                continue
-            if (top == "i"):
-                stack.append("q")
-                continue
-            if (top == "p"):
-                stack.append("r")
-                continue
-        if (i == "p"):
-            if (top == "i"):
-                stack.append("r")
-                continue
-            if (top == "q" or top == "p"):
-                continue
-        if (i == "q"):
-            if (top == "r"):
-                stack.append("i")
-                continue
-            if (top == "q" or top == "p"):
-                continue
-        stack.append(top)
-        stack.append(i)
-        if(i == "1" or i == "2" or i == "3" or i == "4"):
-            rot = rot + 1
-            if(rot == len(sol)):
-                break;
-    return stack
+    def value(stack):
+        val = 0
+        for i in stack:
+            if(i == "r" or i == "i"):
+                val = val + 1
+            if(i == "p" or i == "q"):
+                val = val + 1.5
+            if(i == "x"):
+                val = val + 2
+            if(i == "y"):
+                val = val + 3.5
+            if(i == "z"):
+                val = val + 4.5
+        return val
 
-def value(stack):
-    val = 0
-    for i in stack:
-        if(i == "r" or i == "i"):
-            val = val + 1
-        if(i == "p" or i == "q"):
-            val = val + 1.5
-        if(i == "x"):
-            val = val + 2
-        if(i == "y"):
-            val = val + 3.5
-        if(i == "z"):
-            val = val + 4.5
-    return val
-
-def reduce(i,str,state):
-    if(i == len(sol)):
-        str = cancle(str)
-        return str
-    length = 99999
-    best = ""
-    for j in range(len(moves[state][sol[i]])):
-        temp  = reduce(i+1,str+moves[state][sol[i]][j],nextState[state][sol[i]][j])
-        val = value(stack = temp)
-        if(val < length):
-            length = val
-            best = temp
-    return best
-
-def nMoves(str):
-    n = 0
-    for i in str:
-        n = n + 1
-        if(i == "y"):
-            n = n + 1
-        if(i == "z"):
-            n = n + 2
-    return n
-strReduced = reduce(i = 0,str = "",state = 0)
-strReduced = strReduced[1:]
-print("".join(strReduced))
+    def reduce(i,str,state):
+        if(i == len(sol)):
+            str = cancle(str)
+            return str
+        length = 99999
+        best = ""
+        for j in range(len(moves[state][sol[i]])):
+            temp  = reduce(i+1,str+moves[state][sol[i]][j],nextState[state][sol[i]][j])
+            val = value(stack = temp)
+            if(val < length):
+                length = val
+                best = temp
+        return best
+    
+    
+    strReduced = reduce(i = 0,str = "",state = 0)
+    strReduced = strReduced[1:]
+    return "".join(strReduced)
 
