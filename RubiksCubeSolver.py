@@ -323,7 +323,6 @@ class RubiksCubeSolver:
         Scan one face of the cube.
         Capture occurs automatically after Arduino sends DONE.
         """
-        done_count = 0
         if self.cap is None:
             self.init_webcam(1)
 
@@ -331,6 +330,10 @@ class RubiksCubeSolver:
             print("Error: Arduino not connected.")
             return None
 
+        self.arduino.arduino.reset_input_buffer()
+        done_count = 0
+        for _ in range(60):
+            self.cap.read()
         face_colors = []
         start_time = time.time()
         timeout = 10  # seconds
@@ -372,6 +375,7 @@ class RubiksCubeSolver:
             # 🔹 Check Arduino signal
             if self.arduino.arduino.in_waiting:
                 response = self.arduino.arduino.readline().decode().strip()
+                print("Arduino Response: ", response)
                 if response == "DONE":
                     done_count += 1
                     if done_count == expected_done:
@@ -405,12 +409,12 @@ class RubiksCubeSolver:
         if not self.arduino:
             self.arduino = ArduinoCommunication()
         move = [
-            ['d'],
-            ['x'],
-            ['x'],
-            ['x'],
-            ['i', 'x'],
-            ['y', 'p']
+            'd',
+            'x',
+            'x',
+            'x',
+            'ix',
+            'yp'
         ]
 
         for face_idx in range(6):
@@ -423,7 +427,7 @@ class RubiksCubeSolver:
 
             # Now wait + capture inside scan_face()
             face_colors = self.scan_face(expected_done=len(move[face_idx]))
-
+            print(f"Face {face_idx} scanned: {face_colors}")
             if face_colors is None:
                 print("Scanning cancelled")
                 return None

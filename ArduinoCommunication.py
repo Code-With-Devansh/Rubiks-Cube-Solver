@@ -99,7 +99,7 @@ class ArduinoCommunication:
 
             # Handshake wait
             start_time = time.time()
-            timeout = 5
+            timeout = 10
 
             while True:
                 if self.arduino.in_waiting:
