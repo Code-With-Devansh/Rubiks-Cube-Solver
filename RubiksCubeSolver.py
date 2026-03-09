@@ -486,6 +486,7 @@ class RubiksCubeSolver:
                 if cube_string is None:
                     continue
                 try:
+                    exit();
                     solution = self.solve_cube(cube_string)
                     if solution:
                         self.solution_text = solution
@@ -502,7 +503,7 @@ class RubiksCubeSolver:
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('q'):
                     break
-                
+            exit();
             solution = self.solve_cube(cube_string)
             if solution:
                 self.solution_text = solution
