@@ -29,8 +29,8 @@ void hitman(){
   if(correction++ ==2){
     hit.write(96);
     delay(4000);
-    hit.write(80);
-    delay(450);
+    hit.write(70);
+    delay(425);
     hit.write(90);
     correction = 0;
   }   
@@ -47,7 +47,7 @@ void setup() {
   hit.write(96);
   delay(4000);
   hit.write(70);
-  delay(450);
+  delay(425);
   hit.write(90);
 }
 
@@ -66,8 +66,14 @@ void executeI(){
 }
 
 void loop() {
-  if (Serial.available() > 0) {
-    char command = Serial.read();
+  if (Serial.available()) {
+    String line = Serial.readStringUntil('\n');
+    line.trim();
+
+    int colon = line.indexOf(':');
+
+    int id = line.substring(0, colon).toInt();
+    char command = line.substring(colon + 1).charAt(0);
     switch(command){
       case 'r':
         executeR();
@@ -95,14 +101,14 @@ void loop() {
         angle-=108;
         rotor.write(angle);
         delay(500);
-        angle+=35;
+        angle+=40;
         BUB(angle);
-        angle-=17;
+        angle-=22;
         executeI();
       }else{
-        angle+=108;
+        angle+=115;
         BUB(angle);
-        angle-=18;
+        angle-=25;
         rotor.write(angle);
       }
         break;
@@ -113,14 +119,14 @@ void loop() {
         angle+=108;
         rotor.write(angle);
         delay(500);
-        angle-=30;
+        angle-=22;
         BUB(angle);
-        angle+=12;
+        angle+=4;
         executeR();
       }else{
-        angle -=108;
+        angle -=100;
         BUB(angle);
-        angle+=18;
+        angle+=10;
         rotor.write(angle);
         delay(500);
       }
@@ -132,9 +138,9 @@ void loop() {
         angle+=108;
         rotor.write(angle);
         delay(500);
-        angle-=37;
+        angle-=27;
         BUB(angle);
-        angle+=17;
+        angle+=7;
         executeR();
         break;
       
@@ -144,9 +150,9 @@ void loop() {
         angle-=108;
         rotor.write(angle);
         delay(500);
-        angle+=37;
+        angle+=42;
         BUB(angle);
-        angle-=17;
+        angle-=22;
         executeI();
         break;
       case 'x':
@@ -180,7 +186,23 @@ void loop() {
       case 'v':
         hit.write(96);
         break;
+      case '0':
+        blocker.write(90);  
+        rotor.write(90);   
+        hit.write(96);
+        delay(4000);
+        hit.write(70);
+        delay(425);
+        hit.write(90);
+        correction = 0;
+        angle = 90;
+        break;
+      case 'j':
+        blocker.write(30);
     }
-    Serial.println("DONE");
+    Serial.print("DONE:");
+    Serial.println(id);
   }
 }
+
+//iiripq342211

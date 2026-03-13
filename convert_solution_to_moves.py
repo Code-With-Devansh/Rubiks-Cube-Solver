@@ -57,7 +57,7 @@ nextState =[{"R": [1],"R'": [0],"R2":[2],
           "B":[2],"B'":[1],"B2":[1,2]}]
 
 # str = "L D2 R F B L' F2 R D L F B2 L2 F2 U' L2 D2 L2 U F2 U'"
-def convert_solution_to_moves(str):
+def convert_solution_to_moves(str, state = 2):
     sol = str.split()
     def cancle(str):
         stack = []
@@ -155,7 +155,10 @@ def convert_solution_to_moves(str):
         return best
     
     
-    strReduced = reduce(i = 0,str = "",state = 0)
+    strReduced = reduce(i = 0,str = "",state=0)
     strReduced = strReduced[1:]
     return "".join(strReduced)
 
+if __name__ == "__main__":
+    print(convert_solution_to_moves("L U D2 L2 B2 D L2 F' B L' B' D' F2 U' R2 D R2 F2 U F2 U2"))
+    "x1x1y4x3rzr3ryixr1x4ziz2ixrxix1zrx2zix2yiyrxi2qxrzr3xry2x3rxixr1z4yizi4ixrz1yiz4ixrz3y"

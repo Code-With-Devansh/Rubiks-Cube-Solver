@@ -83,47 +83,62 @@ class ArduinoCommunication:
     # ----------------------------------
 
     def send_to_arduino(self, solution):
-
         if self.arduino is None:
             print("\nSimulation mode:")
             for move in solution.split():
                 print(f"  -> {move}")
             return
 
-        moves = solution.split()
+        moves = solution
 
         for idx, move in enumerate(moves, 1):
 
-            print(f"Move {idx}/{len(moves)}: {move}")
-            self.arduino.write(f"{move}\n".encode())
+            command = f"{idx}:{move}\n"
+            print(f"Sending {command.strip()}")
+            self.arduino.reset_input_buffer()
+            self.arduino.write(command.encode())
 
-            # Handshake wait
             start_time = time.time()
             timeout = 10
 
             while True:
+
                 if self.arduino.in_waiting:
                     response = self.arduino.readline().decode().strip()
-                    if response == "DONE":
+                    print("Arduino:", response)
+
+                    if response == f"DONE:{idx}":
                         break
 
                 if time.time() - start_time > timeout:
-                    print("Timeout waiting for Arduino.")
+                    print("Timeout waiting for Arduino")
                     return
 
         print("Solution sent successfully.")
-
     # ----------------------------------
 
     def send_single_move(self, move):
-        for cmd in move:
-            self.arduino.write(f"{cmd}\n".encode())
-            while True:
-                if self.arduino.in_waiting:
-                    response = self.arduino.readline().decode().strip()
-                    if response == "DONE":
-                        break
-            
+
+        self.arduino.write(f"999:{move}\n".encode())
+
+        start = time.time()
+        timeout = 5
+
+        while True:
+
+            if self.arduino.in_waiting:
+                response = self.arduino.readline().decode().strip()
+                print(response)
+                if response == "DONE:999":
+                    return
+
+            if time.time() - start > timeout:
+                raise TimeoutError("Arduino did not respond")    
 
     def is_connected(self):
         return self.arduino is not None and self.arduino.is_open
+    
+if __name__ == '__main__':
+    arduino = ArduinoCommunication()
+    arduino.send_single_move('r')
+    arduino.send_to_arduino("iiripq342211")

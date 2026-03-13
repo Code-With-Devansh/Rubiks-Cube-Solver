@@ -4,16 +4,15 @@ This driver captures cube faces using webcam, solves using Kociemba algorithm,
 and sends solution to Arduino for execution.
 """
 
+from convert_solution_to_moves import convert_solution_to_moves
 import cv2
 import numpy as np
-import serial
-import serial.tools.list_ports
 import time
 import kociemba as sv
 from ArduinoCommunication import ArduinoCommunication
 
 class RubiksCubeSolver:
-    def __init__(self, webcam, arduino_port=None, baudrate=9600):
+    def __init__(self, webcam, baudrate=9600):
         """
         Initialize the Rubik's Cube Solver
         
@@ -32,18 +31,17 @@ class RubiksCubeSolver:
         self.arduino = ArduinoCommunication(baudrate)
         self.face_names = ['Front', 'Right', 'Back', 'Left', 'Up', 'Down']
         self.color_ranges = {
-            'W': ([0, 0, 200], [180, 40, 255]),
+            'W':  ([0,   0,   180], [180, 30,  255]),  # Fix 1: tighter sat ceiling (30), raised value floor (180)
 
-            'Y': ([22, 120, 120], [32, 255, 255]),
+            'Y':  ([22,  120, 120], [32,  255, 255]),
 
-            'R1': ([0, 120, 100], [8, 255, 255]),
+            'R1': ([0,   120, 100], [6,   255, 255]),  # Fix 2: end at 6 (was 8) — widens gap to Orange
             'R2': ([170, 120, 100], [180, 255, 255]),
 
-            'O': ([10, 130, 120], [20, 255, 255]),
+            'O':  ([12,  130, 120], [20,  255, 255]),  # Fix 2: start at 12 (was 10) — widens gap from Red
 
-            'G': ([40, 80, 80], [75, 255, 255]),
-
-            'B': ([95, 80, 80], [125, 255, 255])
+            'G':  ([40,  80,  80],  [75,  255, 255]),
+            'B': ([90, 50, 50], [130, 255, 255]),
         }
     
     
@@ -109,7 +107,13 @@ class RubiksCubeSolver:
             )
 
         return frame
-
+    def _center_roi(self, hsv, x, y, w, h, fraction=0.6):
+        """Return the center fraction of a sticker ROI to avoid edge bleed."""
+        cx = x + w // 2
+        cy = y + h // 2
+        half_w = int(w * fraction / 2)
+        half_h = int(h * fraction / 2)
+        return hsv[cy - half_h:cy + half_h, cx - half_w:cx + half_w]
     def draw_cube_net(self, frame):
         """
         Draw captured cube faces as a 2D net on the right side
@@ -204,17 +208,16 @@ class RubiksCubeSolver:
 
         # ---- decision logic ----
         if not color_counts:
-            return 'F'
+            return 'W'  # Fix 1: was NameError — detected_color used before assignment
 
         detected_color = max(color_counts, key=color_counts.get)
         max_pixels = color_counts[detected_color]
 
         # minimum confidence threshold (tune for ROI size)
-        MIN_PIXELS = int(0.05 * hsv_roi.shape[0] * hsv_roi.shape[1])
+        MIN_PIXELS = int(0.15 * hsv_roi.shape[0] * hsv_roi.shape[1])
 
         if max_pixels < MIN_PIXELS:
-            # likely white or reflection
-            return 'F'
+            return 'W'  # Fix 2: was returning detected_color — fallback to white was never triggered
 
         return detected_color
 
@@ -255,9 +258,9 @@ class RubiksCubeSolver:
             List of (x, y, width, height) for each sticker
         """
         # Center the grid
-        grid_size = 550
-        sticker_size = 120
-        gap = 70
+        grid_size = 515
+        sticker_size = 105
+        gap = 100
         
         start_x = (frame_width - grid_size) // 2
         start_y = (frame_height - grid_size) // 2
@@ -288,8 +291,8 @@ class RubiksCubeSolver:
         R = raw[9:18]
         B = raw[18:27]
         L = raw[27:36]
-        U = raw[36:45]
-        D = raw[45:54]
+        D = raw[36:45]
+        U = raw[45:54]
 
         # Reassemble into URFDLB
         kociemba_string = U + R + F + D + L + B
@@ -311,8 +314,8 @@ class RubiksCubeSolver:
             raw[13]: 'R',
             raw[22]: 'B',
             raw[31]: 'L',
-            raw[40]: 'U',
-            raw[49]: 'D',
+            raw[40]: 'D',
+            raw[49]: 'U',
         }
 
         converted = ''.join(centers[c] for c in raw)
@@ -337,8 +340,9 @@ class RubiksCubeSolver:
             self.cap.read()
         face_colors = []
         start_time = time.time()
-        timeout = 10  # seconds
-
+        timeout = 1  # seconds
+        start = time.time()
+        
         while True:
             ret, frame = self.cap.read()
             if not ret:
@@ -352,7 +356,7 @@ class RubiksCubeSolver:
             # Continuously compute temp colors for preview
             temp_colors = []
             for (x, y, w, h) in stickers:
-                roi = hsv[y:y+h, x:x+w]
+                roi = self._center_roi(hsv, x, y, w, h)
                 color = self.detect_color(roi)
                 temp_colors.append(color)
 
@@ -372,23 +376,25 @@ class RubiksCubeSolver:
 
             cv2.imshow(display_window, display_frame)
             cv2.waitKey(1)
-
+            if(time.time()-start > timeout):
+                print("Out due to timeout")
+                return face_colors
             # 🔹 Check Arduino signal
-            if self.arduino.arduino.in_waiting:
-                response = self.arduino.arduino.readline().decode().strip()
-                print("Arduino Response: ", response)
-                if response == "DONE":
-                    done_count += 1
-                    if done_count == expected_done:
-                        face_colors = temp_colors.copy()
-                        return face_colors
+            # if self.arduino.arduino.in_waiting:
+            #     response = self.arduino.arduino.readline().decode().strip()
+            #     print("Arduino Response: ", response)
+            #     if response == "DONE:999":
+            #         done_count += 1
+            #         if done_count == expected_done:
+            #             face_colors = temp_colors.copy()
+            #             return face_colors
             
-            # 🔹 Timeout protection
-            if time.time() - start_time > timeout:
-                print("Timeout waiting for Arduino")
-                return None
+            # # 🔹 Timeout protection
+            # if time.time() - start_time > timeout:
+            #     print("Timeout waiting for Arduino")
+            #     return None
 
-        return face_colors
+        # return face_colors
     
     def scan_all_faces(self):
         """
@@ -424,16 +430,18 @@ class RubiksCubeSolver:
 
             # Send each command non-blocking
             for cmd in move[face_idx]:
-                self.arduino.send_single_move(cmd)
-
+                self.arduino.send_to_arduino(cmd)
+            print("Out of send ot arduino")
             # Now wait + capture inside scan_face()
-            face_colors = self.scan_face(expected_done=len(move[face_idx]))
+            face_colors = self.scan_face()
+            print('executed')
             print(f"Face {face_idx} scanned: {face_colors}")
             if face_colors is None:
                 print("Scanning cancelled")
                 return None
 
             all_face_colors.append(face_colors)
+            print("saved colors")
             self.face_colors = all_face_colors.copy()
         cube_string = ''
         for face_idx in range(6):
@@ -442,6 +450,7 @@ class RubiksCubeSolver:
         print(f"\nCube colors: {cube_string}")
         mapped = self.color_to_face_mapping(cube_string)
         kociemba_ready = self.raw_to_kociemba(mapped)
+        # mapped = mapped[:36] +  mapped[45:] + mapped[36:45] 
         return kociemba_ready
     
 
@@ -483,14 +492,16 @@ class RubiksCubeSolver:
             while True:
                 if not solved:
                      cube_string = self.scan_all_faces()
+                     
                 if cube_string is None:
                     continue
                 try:
-                    exit();
                     solution = self.solve_cube(cube_string)
                     if solution:
                         self.solution_text = solution
                     solved = True
+                    converted = convert_solution_to_moves(solution)
+                    self.arduino.send_to_arduino(converted)
                 except:
                     self.solution_text = "Not solved"
                 ret, frame = self.cap.read()
@@ -503,7 +514,8 @@ class RubiksCubeSolver:
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('q'):
                     break
-            exit();
+
+
             solution = self.solve_cube(cube_string)
             if solution:
                 self.solution_text = solution
@@ -534,7 +546,7 @@ def main():
     
     # Create solver instance
     # You can specify Arduino port manually: solver = RubiksCubeSolver(arduino_port='/dev/ttyUSB0')
-    solver = RubiksCubeSolver()
+    solver = RubiksCubeSolver(5)
     
     # Run the solver
     solver.run()
