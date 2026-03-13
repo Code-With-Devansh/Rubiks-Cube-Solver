@@ -141,4 +141,4 @@ class ArduinoCommunication:
 if __name__ == '__main__':
     arduino = ArduinoCommunication()
     arduino.send_single_move('r')
-    arduino.send_to_arduino("iiripq342211")
+    arduino.send_to_arduino("xixi4xqxrzr3xrz2xiz2z1yrz1xiyr1yrz1z2x2y3z2rx3yrxizr1x4ixrx3x4z3z4x1")

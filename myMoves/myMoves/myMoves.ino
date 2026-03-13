@@ -106,9 +106,9 @@ void loop() {
         angle-=22;
         executeI();
       }else{
-        angle+=115;
+        angle+=113;
         BUB(angle);
-        angle-=25;
+        angle-=23;
         rotor.write(angle);
       }
         break;
@@ -119,9 +119,9 @@ void loop() {
         angle+=108;
         rotor.write(angle);
         delay(500);
-        angle-=22;
+        angle-=27;
         BUB(angle);
-        angle+=4;
+        angle+=9;
         executeR();
       }else{
         angle -=100;
@@ -132,7 +132,7 @@ void loop() {
       }
         break;
       
-      case '3':
+      case '4':
         angle-=180;
         BUB(angle);
         angle+=108;
@@ -144,7 +144,7 @@ void loop() {
         executeR();
         break;
       
-      case '4':
+      case '3':
         angle+=180;
         BUB(angle);
         angle-=108;

@@ -327,20 +327,10 @@ class RubiksCubeSolver:
         Scan one face of the cube.
         Capture occurs automatically after Arduino sends DONE.
         """
-        if self.cap is None:
-            self.init_webcam(1)
-
-        if self.arduino is None:
-            print("Error: Arduino not connected.")
-            return None
-
-        self.arduino.arduino.reset_input_buffer()
-        done_count = 0
         for _ in range(180):
             self.cap.read()
         face_colors = []
-        start_time = time.time()
-        timeout = 1  # seconds
+        timeout = 1
         start = time.time()
         
         while True:
@@ -378,23 +368,8 @@ class RubiksCubeSolver:
             cv2.waitKey(1)
             if(time.time()-start > timeout):
                 print("Out due to timeout")
+                face_colors = temp_colors.copy()
                 return face_colors
-            # 🔹 Check Arduino signal
-            # if self.arduino.arduino.in_waiting:
-            #     response = self.arduino.arduino.readline().decode().strip()
-            #     print("Arduino Response: ", response)
-            #     if response == "DONE:999":
-            #         done_count += 1
-            #         if done_count == expected_done:
-            #             face_colors = temp_colors.copy()
-            #             return face_colors
-            
-            # # 🔹 Timeout protection
-            # if time.time() - start_time > timeout:
-            #     print("Timeout waiting for Arduino")
-            #     return None
-
-        # return face_colors
     
     def scan_all_faces(self):
         """
@@ -406,15 +381,8 @@ class RubiksCubeSolver:
         print("\n" + "="*50)
         print("RUBIK'S CUBE SCANNING")
         print("="*50)
-        print("\nInstructions:")
-        print("1. Position the cube so the specified face is clearly visible")
-        print("2. Press SPACE when ready to capture the face")
-        print("3. Rotate the cube to the next face as instructed")
-        print("4. Press Q at any time to quit\n")
         
         all_face_colors = []
-        if not self.arduino:
-            self.arduino = ArduinoCommunication()
         move = [
             'd',
             'x',
@@ -431,10 +399,8 @@ class RubiksCubeSolver:
             # Send each command non-blocking
             for cmd in move[face_idx]:
                 self.arduino.send_to_arduino(cmd)
-            print("Out of send ot arduino")
             # Now wait + capture inside scan_face()
             face_colors = self.scan_face()
-            print('executed')
             print(f"Face {face_idx} scanned: {face_colors}")
             if face_colors is None:
                 print("Scanning cancelled")
@@ -450,7 +416,6 @@ class RubiksCubeSolver:
         print(f"\nCube colors: {cube_string}")
         mapped = self.color_to_face_mapping(cube_string)
         kociemba_ready = self.raw_to_kociemba(mapped)
-        # mapped = mapped[:36] +  mapped[45:] + mapped[36:45] 
         return kociemba_ready
     
 
