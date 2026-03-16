@@ -160,5 +160,5 @@ def convert_solution_to_moves(str, state = 2):
     return "".join(strReduced)
 
 if __name__ == "__main__":
-    print(convert_solution_to_moves("B2 R2 B' R' U B U R U' R' L2 D' F2 U F2 D2 L2 D2 R2 D"))
+    print(convert_solution_to_moves("R U R' U'"))
     "x1x1y4x3rzr3ryixr1x4ziz2ixrxix1zrx2zix2yiyrxi2qxrzr3xry2x3rxixr1z4yizi4ixrz1yiz4ixrz3y"

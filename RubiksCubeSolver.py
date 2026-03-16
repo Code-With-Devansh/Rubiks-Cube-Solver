@@ -453,22 +453,15 @@ class RubiksCubeSolver:
         """Main execution loop"""
         try:
             self.init_webcam(self.camidx)
-            solved = False
+            cube_string = self.scan_all_faces()
+            try:
+                solution = self.solve_cube(cube_string)
+                self.solution_text = solution
+                converted = convert_solution_to_moves(solution)
+                self.arduino.send_to_arduino(converted)
+            except:
+                self.solution_text = "Not Solved"
             while True:
-                if not solved:
-                     cube_string = self.scan_all_faces()
-                     
-                if cube_string is None:
-                    continue
-                try:
-                    solution = self.solve_cube(cube_string)
-                    if solution:
-                        self.solution_text = solution
-                    solved = True
-                    converted = convert_solution_to_moves(solution)
-                    self.arduino.send_to_arduino(converted)
-                except:
-                    self.solution_text = "Not solved"
                 ret, frame = self.cap.read()
                 if not ret:
                     break
@@ -481,10 +474,10 @@ class RubiksCubeSolver:
                     break
 
 
-            solution = self.solve_cube(cube_string)
-            if solution:
-                self.solution_text = solution
-            return solution
+            # solution = self.solve_cube(cube_string)
+            # if solution:
+            #     self.solution_text = solution
+            # return solution
             
         except KeyboardInterrupt:
             print("\n\nProgram interrupted by user")

@@ -20,7 +20,7 @@ void BUB(int angle){
 
 void hitman(){
   int speed = 0;
-  int dd = 700;
+  int dd = 600;
   delay(100);
   hit.write(speed);
   delay(dd);
@@ -53,11 +53,29 @@ void setup() {
 
 
 void executeR(){
-  angle-=90;
-  rotor.write(angle);
-  delay(500);
-}
 
+  int target = angle - 90;
+
+  int stepDelay = 8;
+  int stepSize = 1;
+
+  if(target > angle){
+    for(int pos = angle; pos <= target; pos += stepSize){
+      rotor.write(pos);
+      delay(stepDelay);
+    }
+  } 
+  else{
+    for(int pos = angle; pos >= target; pos -= stepSize){
+      rotor.write(pos);
+      delay(stepDelay);
+    }
+  }
+
+  angle = target;
+
+  delay(700);
+}
 
 void executeI(){
   angle+=90;
@@ -101,14 +119,14 @@ void loop() {
         angle-=108;
         rotor.write(angle);
         delay(500);
-        angle+=40;
+        angle+=33;
         BUB(angle);
-        angle-=22;
+        angle-=15;
         executeI();
       }else{
-        angle+=113;
+        angle+=103;
         BUB(angle);
-        angle-=23;
+        angle-=13;
         rotor.write(angle);
       }
         break;
@@ -119,14 +137,14 @@ void loop() {
         angle+=108;
         rotor.write(angle);
         delay(500);
-        angle-=27;
+        angle-=30;
         BUB(angle);
-        angle+=9;
+        angle+=12;
         executeR();
       }else{
-        angle -=100;
+        angle -=103;
         BUB(angle);
-        angle+=10;
+        angle+=13;
         rotor.write(angle);
         delay(500);
       }
@@ -138,9 +156,9 @@ void loop() {
         angle+=108;
         rotor.write(angle);
         delay(500);
-        angle-=27;
+        angle-=31;
         BUB(angle);
-        angle+=7;
+        angle+=13;
         executeR();
         break;
       
@@ -150,9 +168,9 @@ void loop() {
         angle-=108;
         rotor.write(angle);
         delay(500);
-        angle+=42;
+        angle+=33;
         BUB(angle);
-        angle-=22;
+        angle-=13;
         executeI();
         break;
       case 'x':
