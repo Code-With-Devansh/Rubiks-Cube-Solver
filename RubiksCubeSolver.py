@@ -31,14 +31,14 @@ class RubiksCubeSolver:
         self.arduino = ArduinoCommunication(baudrate)
         self.face_names = ['Front', 'Right', 'Back', 'Left', 'Up', 'Down']
         self.color_ranges = {
-            'W':  ([0,   0,   180], [180, 30,  255]),  # Fix 1: tighter sat ceiling (30), raised value floor (180)
+            'W':  ([0,   0,   180], [180, 30,  255]), 
 
             'Y':  ([22,  120, 120], [32,  255, 255]),
 
-            'R1': ([0,   120, 100], [6,   255, 255]),  # Fix 2: end at 6 (was 8) — widens gap to Orange
+            'R1': ([0,   120, 100], [6,   255, 255]),  
             'R2': ([170, 120, 100], [180, 255, 255]),
 
-            'O':  ([12,  130, 120], [20,  255, 255]),  # Fix 2: start at 12 (was 10) — widens gap from Red
+            'O':  ([12,  130, 120], [20,  255, 255]),  
 
             'G':  ([40,  80,  80],  [75,  255, 255]),
             'B': ([90, 50, 50], [130, 255, 255]),
@@ -51,7 +51,6 @@ class RubiksCubeSolver:
         if not self.cap.isOpened():
             raise Exception("Could not open webcam")
         
-        # Set camera properties for better quality
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
@@ -63,7 +62,7 @@ class RubiksCubeSolver:
 
         h, w = frame.shape[:2]
 
-        Y_OFFSET = 50   # ← move overlay down by 150 pixels
+        Y_OFFSET = 50  
         BAR_HEIGHT = 60
 
         cv2.rectangle(
@@ -121,7 +120,6 @@ class RubiksCubeSolver:
         if not self.face_colors:
             return frame
 
-        # color to BGR (for drawing only)
         COLOR_MAP = {
             'Y': (0, 255, 255),   # yellow
             'O': (0, 165, 255),   # orange
@@ -131,7 +129,6 @@ class RubiksCubeSolver:
             'R': (0, 0, 255),     # red
         }
 
-        # positions in net (relative)
         net_positions = {
             5: (1, 0),  # Up
             3: (0, 1),  # Left
@@ -141,7 +138,6 @@ class RubiksCubeSolver:
             4: (1, 2),  # Down
         }
 
-        net_width = 4 * (3 * 34 + 10)   # exact net width
         net_height = 3 * (3 * 34 + 10)
 
         start_x = 50
@@ -208,7 +204,7 @@ class RubiksCubeSolver:
 
         # ---- decision logic ----
         if not color_counts:
-            return 'W'  # Fix 1: was NameError — detected_color used before assignment
+            return 'W'  
 
         detected_color = max(color_counts, key=color_counts.get)
         max_pixels = color_counts[detected_color]
@@ -217,7 +213,7 @@ class RubiksCubeSolver:
         MIN_PIXELS = int(0.15 * hsv_roi.shape[0] * hsv_roi.shape[1])
 
         if max_pixels < MIN_PIXELS:
-            return 'W'  # Fix 2: was returning detected_color — fallback to white was never triggered
+            return 'W'  
 
         return detected_color
 
@@ -234,11 +230,9 @@ class RubiksCubeSolver:
             Modified frame with grid
         """
         for idx, (x, y, w, h) in enumerate(stickers):
-            # Draw rectangle
             color = (0, 255, 0) if face_colors is None else (0, 255, 255)
             cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
             
-            # Draw sticker number
             cv2.putText(frame, str(idx + 1), (x + 5, y + 20),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             
@@ -322,7 +316,7 @@ class RubiksCubeSolver:
         print("color to face mapping: ", converted)
         return converted
     
-    def scan_face(self, expected_done=1, display_window="Rubik's Cube Scanner"):
+    def scan_face(self, display_window="Rubik's Cube Scanner"):
         """
         Scan one face of the cube.
         Capture occurs automatically after Arduino sends DONE.
@@ -396,10 +390,8 @@ class RubiksCubeSolver:
             self.current_face = face_idx
             print(f"\nPosition {self.face_names[face_idx]} face toward camera...")
 
-            # Send each command non-blocking
             for cmd in move[face_idx]:
                 self.arduino.send_to_arduino(cmd)
-            # Now wait + capture inside scan_face()
             face_colors = self.scan_face()
             print(f"Face {face_idx} scanned: {face_colors}")
             if face_colors is None:
@@ -473,11 +465,6 @@ class RubiksCubeSolver:
                 if key == ord('q'):
                     break
 
-
-            # solution = self.solve_cube(cube_string)
-            # if solution:
-            #     self.solution_text = solution
-            # return solution
             
         except KeyboardInterrupt:
             print("\n\nProgram interrupted by user")
@@ -505,8 +492,6 @@ def main():
     # Create solver instance
     # You can specify Arduino port manually: solver = RubiksCubeSolver(arduino_port='/dev/ttyUSB0')
     solver = RubiksCubeSolver(5)
-    
-    # Run the solver
     solver.run()
 
 
